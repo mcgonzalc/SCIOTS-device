@@ -1,0 +1,12 @@
+{
+  "name": "sciots-device",
+  "version": "1.0.0",
+  "description": "SCIOTS-device: servidor HTTP que ofrece una interfaz al User y lo redirige al registro en Energética (paso 1 del diagrama de secuencia)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
