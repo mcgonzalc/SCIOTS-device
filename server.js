@@ -27,6 +27,11 @@ const DEVICE = {
   serial: 'BC704A540DAB',
 };
 
+// Estado en memoria del Device (se pierde al reiniciar el proceso).
+const session = {
+  authCode: null,
+};
+
 // URL base de Energética (paso 1: registration request).
 // En producción vendría de la configuración del dispositivo.
 const ENERGETICA_URL =
@@ -73,9 +78,19 @@ app.post('/register', (req, res) => {
   res.redirect(302, target);
 });
 
-// Callback opcional: Energética devuelve aquí al User tras el consent (paso 2-3).
 app.get('/callback', (req, res) => {
-  console.log('[Device] Callback recibido:', req.query);
+  const { code, error } = req.query;
+
+  // La energética redirige con ?error=access_denied si el User deniega.
+  if (error) {
+    console.warn(`[Device] Consentimiento denegado: ${error}`);
+    return res.status(403).sendFile(path.join(__dirname, 'public', 'callback.html'));
+  }
+
+  // Paso 3: guardamos el auth_code recibido en memoria.
+  session.authCode = code;
+  console.log(`[Device] auth_code guardado en memoria: ${code}`);
+
   res.sendFile(path.join(__dirname, 'public', 'callback.html'));
 });
 
