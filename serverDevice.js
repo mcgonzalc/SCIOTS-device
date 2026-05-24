@@ -29,6 +29,7 @@ const DEVICE = {
 };
 
 const ENERGETICA_URL = process.env.ENERGETICA_URL || 'http://localhost:4000';
+const AGREGADOR_URL = process.env.AGREGADOR_URL || 'http://localhost:3001';
 const DEVICE_CALLBACK = `http://localhost:${PORT}/callback`;
 
 // ---------- Estado en memoria del Device (se pierde al reiniciar) ----------

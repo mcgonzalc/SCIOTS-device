@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "SCIOTS-device: interfaz al User, registro en Energética (paso 1) y canje/verificación del access token (pasos 3-5)",
   "type": "module",
-  "main": "server.js",
+  "main": "serverDevice.js",
   "scripts": {
-    "start": "tsx server.js",
-    "dev": "tsx watch server.js"
+    "start": "tsx serverDevice.js",
+    "dev": "tsx watch serverDevice.js"
   },
   "dependencies": {
     "express": "^4.19.2",
