@@ -1,12 +1,18 @@
 {
   "name": "sciots-device",
   "version": "1.0.0",
-  "description": "SCIOTS-device: servidor HTTP que ofrece una interfaz al User y lo redirige al registro en Energética (paso 1 del diagrama de secuencia)",
+  "description": "SCIOTS-device: interfaz al User, registro en Energética (paso 1) y canje/verificación del access token (pasos 3-5)",
+  "type": "module",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "tsx server.js",
+    "dev": "tsx watch server.js"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "rsa": "file:../RSA-TS"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0"
   }
 }
