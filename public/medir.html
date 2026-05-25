@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SCIOTS Device · Añadir consumo</title>
+  <style>
+    body { margin:0; background:#0c0d0a; color:#e9e4d4; font-family:'JetBrains Mono', monospace;
+      display:grid; place-items:center; min-height:100vh; }
+    .card { border:1px solid #2a2b22; padding:32px 40px; max-width:460px; width:100%; box-sizing:border-box; }
+    h1 { font-size:18px; letter-spacing:.06em; margin:0 0 8px; }
+    .accent { color:#ffb547; }
+    p { color:#9a9886; font-size:13px; line-height:1.6; margin:0 0 20px; }
+    label { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:#7a7868; margin-bottom:6px; }
+    input { width:100%; box-sizing:border-box; background:#141510; border:1px solid #2a2b22; color:#e9e4d4;
+      font-family:inherit; font-size:14px; padding:12px; }
+    button { width:100%; margin-top:18px; appearance:none; border:none; font-family:inherit; font-weight:700;
+      font-size:12px; letter-spacing:.1em; text-transform:uppercase; padding:14px; background:#ffb547; color:#0c0d0a; cursor:pointer; }
+    button:disabled { opacity:.5; cursor:default; }
+    pre { margin-top:18px; background:#141510; border:1px solid #2a2b22; padding:14px; font-size:12px;
+      color:#7dd3fc; white-space:pre-wrap; word-break:break-word; min-height:2.5rem; }
+    .status { font-size:12px; margin-top:10px; text-align:right; color:#7a7868; }
+    .ok { color:#34d399; } .err { color:#f87171; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Añadir <span class="accent">consumo</span></h1>
+    <p>Introduce un consumo (kWh). El navegador lo firma de forma ciega en la
+      energética y lo registra en el agregador, siguiendo el proceso del README.</p>
+
+    <label for="consumo">Consumo (kWh)</label>
+    <input id="consumo" type="number" min="1" placeholder="350" />
+
+    <button id="btn">Enviar consumo</button>
+
+    <pre id="out">—</pre>
+    <p class="status" id="status"></p>
+  </div>
+
+  <script>
+    const ENERGETICA = 'http://localhost:4000';
+    const AGREGADOR  = 'http://localhost:3001';
+
+    const btn    = document.getElementById('btn');
+    const out    = document.getElementById('out');
+    const status = document.getElementById('status');
+    const input  = document.getElementById('consumo');
+
+    async function enviarConsumo() {
+      const consumo = input.value.trim();
+      if (!consumo) {
+        status.textContent = 'Introduce un consumo';
+        status.className = 'status err';
+        return;
+      }
+
+      btn.disabled = true;
+      out.textContent = 'Enviando...';
+      status.textContent = '';
+      status.className = 'status';
+
+      try {
+        // Paso 1 del README: firma ciega en la energética (aquí blinded = consumo).
+        const bs = await fetch(`${ENERGETICA}/blindsign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ blinded: consumo }),
+        });
+        if (!bs.ok) throw new Error(`blindsign respondió ${bs.status}`);
+        const { blindSig } = await bs.json();
+
+        // Paso 2 del README: registrar el consumo en el agregador.
+        const cs = await fetch(`${AGREGADOR}/consumosign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ consumo, firma: blindSig }),
+        });
+        const result = await cs.json();
+
+        out.textContent = JSON.stringify({ consumo, firma: blindSig, agregador: result }, null, 2);
+        status.textContent = cs.ok ? ('OK · ' + new Date().toLocaleTimeString()) : 'Error en el agregador';
+        status.className = cs.ok ? 'status ok' : 'status err';
+      } catch (e) {
+        out.textContent = 'Error: ' + e;
+        status.textContent = 'Fallo en la petición (¿CORS o servidor caído?)';
+        status.className = 'status err';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    btn.addEventListener('click', enviarConsumo);
+  </script>
+</body>
+</html>
