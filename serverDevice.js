@@ -14,7 +14,7 @@ import express from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { RsaPublicKey, verifyMessage } from 'rsa';
+import { RsaPublicKey, verifyMessage, blind, unblind } from 'rsa';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -132,6 +132,61 @@ app.get('/callback', async (req, res) => {
   }
 
   res.sendFile(path.join(__dirname, 'public', 'callback.html'));
+});
+
+// Proceso estándar de firma a ciegas (cegar/descegar con el módulo RSA-TS).
+// Reusa /pubKey y /blindsign ya existentes en la energética.
+async function firmaCiega(m) {
+  // 1. Pública de la energética
+  const pkRes = await fetch(`${ENERGETICA_URL}/pubKey`);
+  if (!pkRes.ok) throw new Error(`/pubKey respondió ${pkRes.status}`);
+  const { n, e } = await pkRes.json();
+  const pubs = new RsaPublicKey(BigInt(n), BigInt(e));
+
+  // 2. Cegar: bm = m·r^e mod n  (genera el factor de cegado r).
+  const { blinded: bm, r } = blind(m, pubs);
+
+  // 3. Pedir la firma del cegado (ruta ya creada).
+  const bsRes = await fetch(`${ENERGETICA_URL}/blindsign`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ blinded: bm.toString() }),
+  });
+  if (!bsRes.ok) throw new Error(`/blindsign respondió ${bsRes.status}`);
+  const { blindSig } = await bsRes.json();
+
+  // 4. Descegar: s = bs·r⁻¹ mod n.
+  const s = unblind(BigInt(blindSig), r, pubs);
+
+  // 5. Verificar: pubs.verify(s) === m.
+  const ok = pubs.verify(s) === m;
+
+  return {
+    m: m.toString(),
+    r: r.toString(),
+    blinded: bm.toString(),
+    blindSig,
+    firma: s.toString(),
+    verifica: ok,
+  };
+}
+
+app.get('/api/firmar', async (req, res) => {
+  try {
+    const m = BigInt(req.query.m ?? '350');
+    res.json(await firmaCiega(m));
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+app.post('/api/firmar', async (req, res) => {
+  try {
+    const m = BigInt(req.body.m ?? req.body.consumo ?? '350');
+    res.json(await firmaCiega(m));
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
 });
 
 // ---------- Arranque ----------
